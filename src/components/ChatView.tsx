@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, DocumentMetadata } from '../types';
 import { Send, Sparkles, HelpCircle, ExternalLink } from 'lucide-react';
+import userAvatarImg from '../assets/avatar.jpg';
+import mouraLogoImg from '../assets/logo-1.png';
 
 interface ChatViewProps {
   messages: ChatMessage[];
@@ -66,8 +68,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 key={msg.id}
                 className="flex gap-4 items-start max-w-2xl ml-auto flex-row-reverse"
               >
-                <div className="w-8 h-8 rounded-sm bg-[#002B5B] flex-shrink-0 flex items-center justify-center font-bold text-white text-xs shadow-xs">
-                  U
+                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-slate-300 bg-slate-200 shadow-xs">
+                  <img
+                    src={userAvatarImg}
+                    alt="Usuário"
+                    className="w-full h-full object-cover object-top"
+                  />
                 </div>
                 <div className="bg-[#002B5B] p-4 rounded-lg rounded-tr-none text-white shadow-md">
                   <p className="text-sm leading-relaxed font-normal">{msg.text}</p>
@@ -82,8 +88,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
           // AI Response Bubble
           return (
             <div key={msg.id} className="flex gap-4 items-start max-w-2xl">
-              <div className="w-8 h-8 rounded-sm bg-[#F7C600] flex-shrink-0 flex items-center justify-center font-bold text-[#002B5B] text-xs shadow-xs">
-                IA
+              <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex-shrink-0 flex items-center justify-center p-1 shadow-xs overflow-hidden">
+                <img
+                  src={mouraLogoImg}
+                  alt="Moura"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div className="bg-white border-2 border-slate-100 p-4 rounded-lg rounded-tl-none shadow-sm flex-1">
                 <div className="text-sm leading-relaxed text-slate-800 space-y-2">

@@ -1,5 +1,6 @@
 import React from 'react';
 import { MessageSquare, FileText, Activity } from 'lucide-react';
+import mouraLogoImg from '../assets/logo-1.png';
 
 interface SidebarProps {
   activeTab: 'chat' | 'documents' | 'logs';
@@ -21,16 +22,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-6">
         <div
           id="moura-brand-logo"
-          className="bg-[#F7C600] w-10 h-10 rounded-sm mb-4 flex items-center justify-center font-bold text-[#002B5B] text-xl shadow-sm tracking-tight"
+          className="bg-white rounded-xl mb-4 p-2 shadow-md border border-white/20 overflow-hidden flex items-center justify-center"
+          title="Grupo Moura"
         >
-          M
+          <img
+            src={mouraLogoImg}
+            alt="Grupo Moura"
+            className="w-full h-12 object-contain"
+          />
         </div>
         <h1 className="text-white font-bold text-lg tracking-tight flex items-center gap-2">
           Assistente Moura
         </h1>
-        <p className="text-blue-200 text-xs opacity-75 font-medium">
-          Corporate RAG Engine v1.0
-        </p>
       </div>
 
       {/* Navigation Tabs */}
@@ -85,7 +88,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex items-center gap-2 mb-2">
           <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-sm"></div>
           <span className="text-xs text-blue-200 uppercase tracking-widest font-semibold">
-            Engine Online
+            Assistente Online
           </span>
         </div>
         <p className="text-[10px] text-blue-300/60 font-mono tracking-wider">

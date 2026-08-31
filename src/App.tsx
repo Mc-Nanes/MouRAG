@@ -63,7 +63,7 @@ export default function App() {
   ]);
 
   // Envio de nova dúvida corporativa
-  const handleSendMessage进 = (query: string) => {
+  const handleSendMessage = (query: string) => {
     const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -197,7 +197,7 @@ export default function App() {
           {activeTab === 'chat' && (
             <ChatView
               messages={messages}
-              onSendMessage={handleSendMessage进}
+              onSendMessage={handleSendMessage}
               isLoading={isLoading}
               onSelectDocByName={handleSelectDocByName}
             />
