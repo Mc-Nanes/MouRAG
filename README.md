@@ -1,8 +1,10 @@
 # 🔋 Assistente Inteligente Corporativo - Grupo Moura (RAG System)
 
-Sistema corporativo de **Perguntas e Respostas baseado em RAG (Retrieval-Augmented Generation)** desenvolvido em **Python** e **FastAPI**, com persistência relacional em **SQLite/SQLAlchemy** e integração com modelos de **IA Generativa (Google Gemini API)**.
+Sistema corporativo de **Perguntas e Respostas baseado em RAG (Retrieval-Augmented Generation)** desenvolvido em **Python** e **FastAPI**, com persistência relacional em **SQLite/SQLAlchemy**, frontend em **React + Vite** e integração com modelos de **IA Generativa (Google Gemini API)**.
 
 O assistente permite que colaboradores do Grupo Moura tirem dúvidas sobre normas internas, políticas de Recursos Humanos, diretrizes de Saúde e Segurança do Trabalho (SESMT), Segurança da Informação, Viagens/Reembolsos e Benefícios com respostas fundamentadas e com citação explícita dos documentos fonte.
+
+A arquitetura atual segue o padrão: o frontend consome a API backend, o backend consulta a base documental oficial em `data/`, e o SQLite atua como armazenamento local/indexação para o fluxo RAG e histórico de consultas.
 
 ---
 
@@ -40,38 +42,54 @@ O assistente permite que colaboradores do Grupo Moura tirem dúvidas sobre norma
 
 ### Principais Decisões Arquiteturais
 
-1. **Estratégia de Chunking Inteligente (`ingestion.py`):**
+1. **Fonte oficial de conhecimento (`data/`):**
+   - Os arquivos Markdown na pasta `data/` são a fonte verdadeiramente oficial de conhecimento do sistema.
+   - O SQLite funciona como banco de indexação e persistência do pipeline, mas não como a origem primária dos documentos.
+   - A ingestão atual reprocessa a base oficial para popular o índice e manter a aplicação sincronizada.
+
+2. **Estratégia de Chunking Inteligente (`ingestion.py`):**
    - Fragmentação por seções semânticas (`#`, `##`, `###`) e parágrafos coerentes.
    - Janela de tamanho alvo entre **300 e 500 caracteres**, com sobreposição controlada (*chunk overlap* de 50 caracteres) para preservar o contexto nas transições de ideias.
    - Remoção de ruídos (como divisores horizontais vazios) para maximizar a densidade informacional de cada bloco.
 
-2. **Mecanismo de Recuperação de Alta Precisão (`retriever.py`):**
+3. **Mecanismo de Recuperação de Alta Precisão (`retriever.py`):**
    - Algoritmo de busca por relevância baseado em **Okapi BM25** com normalização de texto em português, remoção de stopwords e pontuação.
    - Ponderação com reforço (*boosting*) para termos presentes nos títulos dos documentos e cabeçalhos de seções.
    - Retorno estruturado com metadados completos (arquivo fonte, título do documento, seção e score de relevância).
 
-3. **Prompt Restritivo de RAG (*Grounding Estrito* - `llm_service.py`):**
+4. **Prompt Restritivo de RAG (*Grounding Estrito* - `llm_service.py`):**
    - O prompt do sistema impõe regras claras contra alucinações: a IA só responde utilizando estritamente os trechos corporativos injetados.
    - Citação obrigatória dos arquivos de origem (ex: `politica_de_ferias.md`).
    - Resposta padrão obrigatória quando a informação não estiver no contexto: *"Informação não encontrada nos documentos corporativos."*
 
-4. **Persistência SQL Estruturada (`models.py` & `database.py`):**
+5. **Persistência SQL Estruturada (`models.py` & `database.py`):**
    - **`documents`**: Metadados do documento fonte (título, categoria, nome do arquivo, hash de conteúdo).
    - **`document_chunks`**: Fragmentos de texto indexados vinculados via chave estrangeira.
    - **`query_history`**: Auditoria e histórico completo de todas as perguntas, respostas geradas, fontes consultadas, modelo e tempo de resposta (latência).
+
+6. **Arquitetura atual do frontend:**
+   - O frontend React/Vite não executa o RAG localmente.
+   - Ele chama a API FastAPI em `http://localhost:8000` para listar documentos, responder perguntas e recarregar a base.
+   - Isso mantém o fluxo de dados em uma arquitetura mais limpa e consistente com a separação entre UI, API e fontes de conhecimento.
 
 ---
 
 ## 📁 Estrutura de Diretórios
 
 ```
-├── data/                                 # Base de conhecimento documental (Markdown)
+├── data/                                 # Fonte oficial de conhecimento (Markdown)
 │   ├── politica_de_ferias.md             # RH: Diretrizes e prazos de férias
 │   ├── seguranca_da_informacao.md        # TI: Senhas, VPN, sigilo e LGPD
 │   ├── faq_beneficios.md                 # RH: Plano de saúde, VR, Gympass, PPR
 │   ├── solicitacao_de_acessos.md         # TI: ERP SAP, perfis e aprovações
 │   ├── politica_de_viagens_e_reembolso.md# Finanças: Diárias, hotéis e km rodado
 │   └── normas_de_seguranca_do_trabalho.md# SESMT: EPIs, chumbo, CIPA e emergências
+├── src/                                  # Frontend em React + Vite
+│   ├── App.tsx                           # Tela principal do chat e integração com API
+│   ├── components/                       # Componentes da interface
+│   ├── types.ts                          # Tipos do frontend
+│   ├── assets/                           # Imagens e recursos visuais
+│   └── main.tsx                          # Bootstrap do frontend
 ├── database.py                           # Conexão e gerenciamento de sessões SQLAlchemy
 ├── models.py                             # Modelos ORM (Document, DocumentChunk, QueryHistory)
 ├── schemas.py                            # Schemas de validação de entrada/saída Pydantic V2
@@ -82,15 +100,20 @@ O assistente permite que colaboradores do Grupo Moura tirem dúvidas sobre norma
 │   ├── health.py                         # Endpoint GET /health
 │   ├── documents.py                      # Endpoints GET /documents, GET /documents/{id}, POST /ingest
 │   └── ask.py                            # Endpoints POST /ask e GET /history
-├── tests/                                # Bateria completa de testes automatizados (Pytest)
+├── tests/                                # Suíte automatizada de testes (Pytest)
 │   ├── test_database.py                  # Testes dos modelos e persistência SQL
 │   ├── test_ingestion.py                 # Testes de chunking e extração de metadados
 │   ├── test_retriever.py                 # Testes de relevância e busca de trechos
 │   ├── test_llm_service.py               # Testes de prompting e geração RAG
 │   └── test_api.py                       # Testes de integração dos endpoints FastAPI
 ├── main.py                               # Ponto de entrada FastAPI e Swagger OpenAPI
+├── package.json                          # Scripts do frontend e dependências do Vite/React
+├── vite.config.ts                        # Configuração do Vite
 ├── requirements.txt                      # Dependências do projeto Python
-└── README.md                             # Documentação técnica completa
+├── .env.example                          # Exemplo de env para API e banco
+├── moura_rag.db                          # Banco SQLite local do projeto
+├── README.md                             # Documentação do projeto
+└── dist/                                 # Build estático para produção
 ```
 
 ---
@@ -103,14 +126,17 @@ O assistente permite que colaboradores do Grupo Moura tirem dúvidas sobre norma
 
 ### 2. Instalação das Dependências
 
-Crie um ambiente virtual (opcional) e instale os pacotes necessários:
+Crie um ambiente virtual e instale os pacotes necessários:
 
 ```bash
-# Criar e ativar ambiente virtual (Linux/macOS)
-python3 -m venv venv
-source venv/bin/activate
+# Linux/macOS
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 
-# Instalar dependências
+# Windows PowerShell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
@@ -169,11 +195,11 @@ O frontend será servido em:
 
 ## 🧪 Execução de Testes Automatizados
 
-O projeto conta com uma suíte de 19 testes automatizados com cobertura completa de banco de dados, chunking, recuperação e endpoints HTTP:
+O projeto conta com uma suíte de 21 testes automatizados com cobertura completa de banco de dados, chunking, recuperação e endpoints HTTP:
 
 ```bash
 # Executar todos os testes com Pytest
-TESTING=1 pytest -v
+TESTING=1 pytest -q
 ```
 
 ---
