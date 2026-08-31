@@ -149,6 +149,22 @@ python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 A documentação interativa Swagger UI estará disponível em: **`http://localhost:8000/docs`** e ReDoc em **`http://localhost:8000/redoc`**.
 
+### 6. Executar o Frontend (React/Vite)
+
+No diretório raiz do projeto, instale as dependências do frontend e inicie o ambiente de desenvolvimento:
+
+```bash
+npm install
+npm run dev -- --host
+```
+
+O frontend será servido em:
+
+- `http://localhost:3000` (se disponível)
+- ou `http://localhost:3001` se a porta 3000 estiver ocupada
+
+> 💡 O frontend faz requisições para a API FastAPI em `http://localhost:8000`, então o backend precisa estar rodando antes de usar o chat.
+
 ---
 
 ## 🧪 Execução de Testes Automatizados

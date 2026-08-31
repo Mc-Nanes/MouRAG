@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, DocumentMetadata } from '../types';
 import { Send, Sparkles, HelpCircle, ExternalLink } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import userAvatarImg from '../assets/avatar.jpg';
 import mouraLogoImg from '../assets/logo-1.png';
 
@@ -51,9 +52,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   S
                 </div>
                 <div className="bg-slate-100 p-4 rounded-lg rounded-tl-none border border-slate-200/50">
-                  <p className="text-sm leading-relaxed text-slate-800 whitespace-pre-line">
-                    {msg.text}
-                  </p>
+                  <div className="text-sm leading-relaxed text-slate-800 prose prose-sm max-w-none">
+                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  </div>
                   <span className="text-[10px] text-slate-400 mt-2 block font-mono">
                     {msg.timestamp}
                   </span>
@@ -96,8 +97,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 />
               </div>
               <div className="bg-white border-2 border-slate-100 p-4 rounded-lg rounded-tl-none shadow-sm flex-1">
-                <div className="text-sm leading-relaxed text-slate-800 space-y-2">
-                  <p className="whitespace-pre-line leading-relaxed">{msg.text}</p>
+                <div className="text-sm leading-relaxed text-slate-800 space-y-2 prose prose-sm max-w-none">
+                  <ReactMarkdown>{msg.text}</ReactMarkdown>
                 </div>
 
                 {/* Sources & Citations Footer */}
