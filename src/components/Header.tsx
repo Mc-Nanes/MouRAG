@@ -1,5 +1,6 @@
 import React from 'react';
-import { Trash2, Sparkles, Building2 } from 'lucide-react';
+import { Trash2, Building2 } from 'lucide-react';
+import userAvatarImg from '../assets/avatar.jpg';
 
 interface HeaderProps {
   onClearChat: () => void;
@@ -39,10 +40,14 @@ export const Header: React.FC<HeaderProps> = ({ onClearChat, activeTabTitle }) =
 
         <div
           id="user-profile-avatar"
-          className="w-8 h-8 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-600 font-bold text-xs"
-          title="Consultor Corporativo Moura"
+          className="w-9 h-9 rounded-full bg-slate-200 border border-slate-300 overflow-hidden shadow-sm ring-2 ring-slate-100 flex items-center justify-center cursor-pointer"
+          title="Usuário"
         >
-          <Sparkles className="w-4 h-4 text-[#002B5B]" />
+          <img
+            src={userAvatarImg}
+            alt="Usuário"
+            className="w-full h-full object-cover object-top"
+          />
         </div>
       </div>
     </header>
