@@ -239,7 +239,7 @@ curl -X POST "http://localhost:8000/ask" \
     "politica_de_ferias.md"
   ],
   "retrieved_chunks_count": 2,
-  "model_used": "gemini-3.7-flash",
+  "model_used": "gemini-3.6-flash",
   "latency_ms": 142.3,
   "query_id": 1,
   "timestamp": "2026-08-30T22:30:00.123456"
@@ -264,7 +264,7 @@ curl -X POST "http://localhost:8000/ask" \
     "politica_de_viagens_e_reembolso.md"
   ],
   "retrieved_chunks_count": 2,
-  "model_used": "gemini-3.7-flash",
+  "model_used": "gemini-3.6-flash",
   "latency_ms": 115.8,
   "query_id": 2,
   "timestamp": "2026-08-30T22:31:12.456789"
@@ -287,7 +287,7 @@ curl -X POST "http://localhost:8000/ask" \
   "answer": "Informação não encontrada nos documentos corporativos.",
   "sources": [],
   "retrieved_chunks_count": 0,
-  "model_used": "gemini-3.7-flash",
+  "model_used": "gemini-3.6-flash",
   "latency_ms": 25.1,
   "query_id": 3,
   "timestamp": "2026-08-30T22:32:05.987654"
@@ -306,6 +306,4 @@ curl -X GET "http://localhost:8000/history?limit=10" \
 ---
 
 ## 🛡️ Segurança e Boas Práticas
-- **Zero Vazamento de Chaves:** As credenciais da API são carregadas exclusivamente no backend via variáveis de ambiente (`.env`).
-- **Validação com Pydantic V2:** Todas as entradas são validadas contra *payloads* malformados ou vazios.
 - **Auditoria Completa:** Todas as perguntas, respostas e latências são registradas de forma persistente para governança e monitoramento de conformidade.

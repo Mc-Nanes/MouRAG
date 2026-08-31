@@ -18,7 +18,7 @@ DIRETRIZES E REGRAS INVIOLÁVEIS:
 
 NOT_FOUND_MESSAGE = "Informação não encontrada nos documentos corporativos."
 
-
+0
 def format_context_for_prompt(retrieved_chunks: List[Dict[str, any]]) -> str:
     """Format retrieved document chunks into a clean, structured context block for the LLM."""
     if not retrieved_chunks:
@@ -44,7 +44,7 @@ def format_context_for_prompt(retrieved_chunks: List[Dict[str, any]]) -> str:
 class LLMService:
     """Service handling RAG prompt construction and generative AI API calls."""
 
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-3.7-flash"):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-3.6-flash"):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("GROQ_API_KEY")
         self.model_name = model_name
         self._client = None

@@ -41,7 +41,7 @@ def ask_assistant(payload: AskRequest, db: Session = Depends(get_db)):
         answer=rag_result["answer"],
         sources_json=json.dumps(rag_result["sources"], ensure_ascii=False),
         chunks_used=len(retrieved_chunks),
-        model_used=rag_result.get("model_used", "gemini-3.7-flash"),
+        model_used=rag_result.get("model_used", "gemini-3.6-flash"),
         latency_ms=rag_result.get("latency_ms", 0.0)
     )
     db.add(query_record)
@@ -53,7 +53,7 @@ def ask_assistant(payload: AskRequest, db: Session = Depends(get_db)):
         answer=rag_result["answer"],
         sources=rag_result["sources"],
         retrieved_chunks_count=len(retrieved_chunks),
-        model_used=rag_result.get("model_used", "gemini-3.7-flash"),
+        model_used=rag_result.get("model_used", "gemini-3.6-flash"),
         latency_ms=rag_result.get("latency_ms", 0.0),
         query_id=query_record.id
     )

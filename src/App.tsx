@@ -58,7 +58,7 @@ export default function App() {
       similarity: 0.94,
       latencyMs: 142.3,
       timestamp: '2026-08-30 15:21:04',
-      model: 'gemini-3.7-flash'
+      model: 'gemini-3.6-flash'
     }
   ]);
 
@@ -102,7 +102,7 @@ export default function App() {
         similarity: response.similarityScore,
         latencyMs: response.latencyMs,
         timestamp: new Date().toLocaleString(),
-        model: 'gemini-3.7-flash'
+        model: 'gemini-3.6-flash'
       };
       setAuditLogs(prev => [newLog, ...prev]);
 

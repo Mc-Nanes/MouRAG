@@ -75,7 +75,7 @@ class QueryHistory(Base):
     answer = Column(Text, nullable=False)
     sources_json = Column(Text, nullable=True, default="[]")
     chunks_used = Column(Integer, default=0)
-    model_used = Column(String(100), default="gemini-3.7-flash")
+    model_used = Column(String(100), default="gemini-3.6-flash")
     latency_ms = Column(Float, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow)
 

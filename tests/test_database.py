@@ -61,7 +61,7 @@ def test_document_model_relationships():
             answer="É uma validação de sistema.",
             sources_json='["teste_doc.md"]',
             chunks_used=1,
-            model_used="gemini-3.7-flash",
+            model_used="gemini-3.6-flash",
             latency_ms=120.5
         )
         db.add(hist)

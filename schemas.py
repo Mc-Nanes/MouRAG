@@ -73,7 +73,7 @@ class AskResponse(BaseModel):
         json_schema_extra={"example": ["politica_de_ferias.md"]}
     )
     retrieved_chunks_count: int = Field(default=0, json_schema_extra={"example": 2})
-    model_used: str = Field(default="gemini-3.7-flash", json_schema_extra={"example": "gemini-3.7-flash"})
+    model_used: str = Field(default="gemini-3.6-flash", json_schema_extra={"example": "gemini-3.6-flash"})
     latency_ms: float = Field(default=0.0, json_schema_extra={"example": 120.45})
     query_id: Optional[int] = None
     timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
