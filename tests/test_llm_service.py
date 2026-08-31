@@ -57,3 +57,35 @@ def test_generate_rag_response_empty_context_returns_standard_message():
     )
     assert res["answer"] == NOT_FOUND_MESSAGE
     assert res["sources"] == []
+
+
+def test_generate_rag_response_uses_current_genai_client(monkeypatch):
+    """The online path must call the current client.models API."""
+    captured = {}
+
+    class FakeModels:
+        def generate_content(self, **kwargs):
+            captured.update(kwargs)
+            return type("Response", (), {"text": "Resposta fundamentada."})()
+
+    class FakeClient:
+        models = FakeModels()
+
+    monkeypatch.delenv("TESTING", raising=False)
+    service = LLMService(api_key="MY_GEMINI_API_KEY")
+    service._client = FakeClient()
+
+    chunks = [
+        {
+            "filename": "politica_de_ferias.md",
+            "document_title": "Política de Férias",
+            "section_title": "Fracionamento",
+            "content": "As férias podem ser fracionadas em até três períodos.",
+        }
+    ]
+    result = service.generate_rag_response("Como fracionar as férias?", chunks)
+
+    assert result["answer"] == "Resposta fundamentada."
+    assert captured["model"] == service.model_name
+    assert captured["config"].temperature == 0
+    assert captured["config"].max_output_tokens == 500

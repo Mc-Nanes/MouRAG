@@ -1,19 +1,25 @@
 """Integration and endpoint tests for FastAPI REST API."""
+import os
+import tempfile
+
 import pytest
 from fastapi.testclient import TestClient
 from main import app
-from database import init_db, SessionLocal
+from database import configure_database, init_db, SessionLocal
 from ingestion import ingest_all_documents
 from llm_service import NOT_FOUND_MESSAGE
 
 
 @pytest.fixture(scope="module")
 def client():
-    """Create test client and ensure documents are ingested."""
+    """Create test client and ensure documents are ingested in a temporary SQLite database."""
+    temp_db = os.path.join(tempfile.gettempdir(), "moura_rag_test.db")
+    configure_database(f"sqlite:///{temp_db}")
     init_db()
     ingest_all_documents("data")
     with TestClient(app) as test_client:
         yield test_client
+    configure_database("sqlite:///./moura_rag.db")
 
 
 def test_root_endpoint(client):

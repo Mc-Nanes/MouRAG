@@ -1,8 +1,11 @@
 """LLM and RAG Prompting Service for Moura Corporate Assistant."""
 import os
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
+
 from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 
 load_dotenv()
 
@@ -17,9 +20,10 @@ DIRETRIZES E REGRAS INVIOLÁVEIS:
 """
 
 NOT_FOUND_MESSAGE = "Informação não encontrada nos documentos corporativos."
+DEFAULT_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 
-0
-def format_context_for_prompt(retrieved_chunks: List[Dict[str, any]]) -> str:
+
+def format_context_for_prompt(retrieved_chunks: List[Dict[str, Any]]) -> str:
     """Format retrieved document chunks into a clean, structured context block for the LLM."""
     if not retrieved_chunks:
         return "Nenhum documento relevante encontrado na base corporativa."
@@ -44,48 +48,28 @@ def format_context_for_prompt(retrieved_chunks: List[Dict[str, any]]) -> str:
 class LLMService:
     """Service handling RAG prompt construction and generative AI API calls."""
 
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-3.6-flash"):
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("GROQ_API_KEY")
+    def __init__(self, api_key: Optional[str] = None, model_name: str = DEFAULT_MODEL):
+        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         self.model_name = model_name
-        self._client = None
+        self._client: Optional[genai.Client] = None
         self._init_client()
 
     def _init_client(self):
-        """Lazy initialize Google GenAI or GenerativeAI client."""
-        if os.getenv("TESTING") == "1" or not self.api_key or self.api_key.startswith("MY_") or self.api_key in ("MY_GEMINI_API_KEY", "YOUR_API_KEY", ""):
+        """Initialize the current Google Gen AI SDK when an API key is available."""
+        if (
+            os.getenv("TESTING") == "1" 
+            or not self.api_key 
+            or self.api_key == "MY_GEMINI_API_KEY"
+        ):
             return
 
-        try:
-            # Try new @google/genai SDK first
-            from google import genai
-            from google.genai import types
-            self._client = genai.Client(
-                api_key=self.api_key,
-                http_options=types.HttpOptions(
-                    headers={"User-Agent": "aistudio-build"},
-                    timeout=3000
-                )
-            )
-            self._client_type = "google_genai"
-            return
-        except Exception:
-            pass
-
-        try:
-            # Fallback to google.generativeai SDK
-            import google.generativeai as genai
-            genai.configure(api_key=self.api_key)
-            self._client = genai.GenerativeModel(self.model_name)
-            self._client_type = "legacy_genai"
-            return
-        except Exception:
-            pass
+        self._client = genai.Client(api_key=self.api_key)
 
     def generate_rag_response(
         self,
         question: str,
-        retrieved_chunks: List[Dict[str, any]]
-    ) -> Dict[str, any]:
+        retrieved_chunks: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """
         Generate answer using strict RAG prompting over retrieved chunks.
         Returns dictionary containing answer, sources list, model metadata and latency.
@@ -133,27 +117,23 @@ INSTRUÇÃO: Responda à pergunta do colaborador com base estritamente no contex
         # Call real AI API if configured
         if self._client:
             try:
-                if self._client_type == "google_genai":
-                    from google.genai import types
-                    config = types.GenerateContentConfig(
-                        system_instruction=SYSTEM_PROMPT,
-                        temperature=0.2,
-                        top_p=0.95
-                    )
-                    response = self._client.models.generate_content(
-                        model=self.model_name,
-                        contents=user_prompt,
-                        config=config
-                    )
-                    answer_text = response.text.strip() if response and response.text else NOT_FOUND_MESSAGE
-                else:
-                    # Legacy SDK
-                    full_prompt = f"{SYSTEM_PROMPT}\n\n{user_prompt}"
-                    response = self._client.generate_content(
-                        full_prompt,
-                        generation_config={"temperature": 0.2}
-                    )
-                    answer_text = response.text.strip() if response and response.text else NOT_FOUND_MESSAGE
+                config = types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    temperature=0,
+                    max_output_tokens=500,
+                    thinking_config=types.ThinkingConfig(
+                        thinking_level=types.ThinkingLevel.LOW,
+                    ),
+                    automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                        disable=True,
+                    ),
+                )
+                response = self._client.models.generate_content(
+                    model=self.model_name,
+                    contents=user_prompt,
+                    config=config,
+                )
+                answer_text = response.text.strip() if response and response.text else NOT_FOUND_MESSAGE
 
                 latency_ms = round((time.time() - start_time) * 1000, 2)
                 return {
@@ -181,7 +161,7 @@ INSTRUÇÃO: Responda à pergunta do colaborador com base estritamente no contex
     def _deterministic_rag_answer(
         self,
         question: str,
-        chunks: List[Dict[str, any]],
+        chunks: List[Dict[str, Any]],
         sources: List[str]
     ) -> str:
         """
@@ -218,7 +198,7 @@ INSTRUÇÃO: Responda à pergunta do colaborador com base estritamente no contex
         )
 
 
-def generate_answer(question: str, chunks: List[Dict[str, any]]) -> Dict[str, any]:
+def generate_answer(question: str, chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Helper function to execute RAG generation."""
     service = LLMService()
     return service.generate_rag_response(question, chunks)

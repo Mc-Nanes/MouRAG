@@ -1,7 +1,7 @@
 """Unit tests for SQLite database initialization and models."""
 import os
 import pytest
-from database import init_db, SessionLocal, engine, Base
+from database import create_session_factory, init_db, SessionLocal, engine, Base
 from models import Document, DocumentChunk, QueryHistory
 
 
@@ -13,6 +13,20 @@ def test_database_initialization():
         assert db.query(Document).count() >= 0
         assert db.query(DocumentChunk).count() >= 0
         assert db.query(QueryHistory).count() >= 0
+    finally:
+        db.close()
+
+
+def test_database_factory_supports_isolated_sqlite_database(tmp_path):
+    """Each test should be able to use a dedicated SQLite file instead of the shared app database."""
+    isolated_url = f"sqlite:///{tmp_path / 'isolated_test.db'}"
+    session_factory, engine = create_session_factory(isolated_url)
+    db = session_factory()
+
+    try:
+        Base.metadata.create_all(bind=engine)
+        assert db.query(Document).count() >= 0
+        assert str(engine.url).startswith("sqlite")
     finally:
         db.close()
 

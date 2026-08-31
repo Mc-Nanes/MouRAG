@@ -1,13 +1,13 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { DocumentMetadata } from '../types';
-import { Plus, CheckCircle, Database } from 'lucide-react';
+import { Database, RefreshCw, CheckCircle } from 'lucide-react';
 
 interface KnowledgeBaseAsideProps {
   documents: DocumentMetadata[];
   onSelectDoc: (doc: DocumentMetadata) => void;
   similarityScore: number;
   latencyMs: number;
-  onUploadDoc: (file: File) => void;
+  onRefreshDocs: () => void;
 }
 
 export const KnowledgeBaseAside: React.FC<KnowledgeBaseAsideProps> = ({
@@ -15,15 +15,11 @@ export const KnowledgeBaseAside: React.FC<KnowledgeBaseAsideProps> = ({
   onSelectDoc,
   similarityScore,
   latencyMs,
-  onUploadDoc
+  onRefreshDocs
 }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      onUploadDoc(e.dataTransfer.files[0]);
-    }
+    onRefreshDocs();
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -35,7 +31,6 @@ export const KnowledgeBaseAside: React.FC<KnowledgeBaseAsideProps> = ({
       id="knowledge-base-aside"
       className="w-80 bg-slate-50 border-l border-slate-100 p-6 flex flex-col shrink-0 overflow-y-auto"
     >
-      {/* Knowledge Base Header & List */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
           Base de Conhecimento
@@ -60,58 +55,50 @@ export const KnowledgeBaseAside: React.FC<KnowledgeBaseAsideProps> = ({
                 {doc.filename}
               </div>
               <div className="text-[9px] text-slate-400 flex items-center justify-between">
-                <span>{doc.chunksCount} chunks indexados</span>
-                <span className="text-slate-300 font-mono text-[8px]">{doc.code}</span>
+                <span>{doc.chunksCount || 0} chunks indexados</span>
+                <span className="text-slate-300 font-mono text-[8px]">{doc.code || 'API'}</span>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* RAG Metrics */}
       <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">
         Métricas RAG
       </h3>
       <div className="grid grid-cols-2 gap-3 mb-8" id="rag-metrics-cards">
         <div className="bg-white p-3 rounded border border-slate-100 text-center shadow-xs">
           <div className="text-lg font-bold text-[#002B5B]">
-            {similarityScore > 0 ? similarityScore.toFixed(2) : '0.89'}
+            {similarityScore > 0 ? similarityScore.toFixed(2) : '0.00'}
           </div>
           <div className="text-[9px] text-slate-400 uppercase font-medium">Similaridade</div>
         </div>
         <div className="bg-white p-3 rounded border border-slate-100 text-center shadow-xs">
           <div className="text-lg font-bold text-[#002B5B]">
-            {latencyMs > 0 ? `${(latencyMs / 1000).toFixed(2)}s` : '1.2s'}
+            {latencyMs > 0 ? `${(latencyMs / 1000).toFixed(2)}s` : '0.00s'}
           </div>
           <div className="text-[9px] text-slate-400 uppercase font-medium">Latência</div>
         </div>
       </div>
 
-      {/* Drag and Drop Ingestion Box */}
       <div className="mt-auto pt-4">
-        <input
-          type="file"
-          ref={fileInputRef}
-          accept=".md,.txt,.markdown"
-          onChange={e => {
-            if (e.target.files && e.target.files[0]) {
-              onUploadDoc(e.target.files[0]);
-            }
-          }}
-          className="hidden"
-        />
         <div
           id="drag-drop-ingest-box"
           onDrop={handleDrop}
           onDragOver={handleDragOver}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={onRefreshDocs}
           className="bg-[#e2e8f0]/80 hover:bg-[#e2e8f0] p-4 rounded-lg border-2 border-dashed border-slate-300 hover:border-[#002B5B] transition-all cursor-pointer text-center group"
         >
-          <div className="text-[10px] font-bold text-slate-500 group-hover:text-slate-700 uppercase tracking-wider mb-2 leading-snug">
-            ARRASTE NOVOS DOCUMENTOS (.MD) PARA ATUALIZAR A BASE
+          <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-500 group-hover:text-slate-700 uppercase tracking-wider mb-2 leading-snug">
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>REINDEXAR BASE DE DOCUMENTOS</span>
           </div>
           <div className="w-8 h-8 mx-auto border-2 border-slate-400 group-hover:border-[#002B5B] rounded flex items-center justify-center transition-colors bg-white/60">
-            <Plus className="w-4 h-4 text-slate-500 group-hover:text-[#002B5B]" />
+            <Database className="w-4 h-4 text-slate-500 group-hover:text-[#002B5B]" />
+          </div>
+          <div className="mt-3 text-[10px] text-slate-500 flex items-center justify-center gap-1">
+            <CheckCircle className="w-3 h-3 text-green-600" />
+            <span>Atualiza a fonte oficial em data/</span>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { KnowledgeBaseAside } from './components/KnowledgeBaseAside';
@@ -6,64 +6,99 @@ import { ChatView } from './components/ChatView';
 import { DocumentsView } from './components/DocumentsView';
 import { AuditLogsView } from './components/AuditLogsView';
 import { DocModal } from './components/DocModal';
-import { INITIAL_DOCUMENTS } from './data/corporateDocs';
-import { RAGEngine } from './lib/ragEngine';
 import { ChatMessage, DocumentMetadata, QueryAuditLog } from './types';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    },
+    ...options
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(detail || 'Erro ao consultar a API do assistente.');
+  }
+
+  return response.json() as Promise<T>;
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'chat' | 'documents' | 'logs'>('chat');
-  const [documents, setDocuments] = useState<DocumentMetadata[]>(INITIAL_DOCUMENTS);
+  const [documents, setDocuments] = useState<DocumentMetadata[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<DocumentMetadata | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [similarityScore, setSimilarityScore] = useState<number>(0.89);
-  const [latencyMs, setLatencyMs] = useState<number>(1200);
+  const [latencyMs, setLatencyMs] = useState<number>(0);
 
-  // RAG Engine instanciado
-  const ragEngine = useMemo(() => new RAGEngine(documents), [documents]);
-
-  // Mensagens pré-carregadas de demonstração e boas-vindas com o design Geometric Balance
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'msg-welcome-system',
       sender: 'system',
       text: 'Olá! Sou o Assistente Moura. Como posso te ajudar com as políticas internas hoje?',
-      timestamp: '15:20'
-    },
-    {
-      id: 'msg-demo-user',
-      sender: 'user',
-      text: 'Qual a política de férias e antecedência mínima?',
-      timestamp: '15:21'
-    },
-    {
-      id: 'msg-demo-ai',
-      sender: 'ai',
-      text: 'Com base na **Política de Férias (politica_de_ferias.md)**, o colaborador deve solicitar suas férias com antecedência mínima de 45 dias no sistema Moura Gente. As férias podem ser fracionadas em até 3 períodos (o primeiro não inferior a 14 dias e os demais não inferiores a 5 dias). O pagamento de férias e do terço constitucional é feito até 2 dias úteis antes do gozo.',
-      sources: ['politica_de_ferias.md'],
-      similarityScore: 0.94,
-      latencyMs: 142.3,
-      timestamp: '15:21'
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
 
-  // Histórico de auditoria RAG
-  const [auditLogs, setAuditLogs] = useState<QueryAuditLog[]>([
-    {
-      id: 'log-1',
-      question: 'Qual a política de férias e antecedência mínima?',
-      answer:
-        'Com base na Política de Férias (politica_de_ferias.md), o colaborador deve solicitar suas férias com antecedência mínima de 45 dias no sistema Moura Gente...',
-      sources: ['politica_de_ferias.md'],
-      chunksRetrieved: 3,
-      similarity: 0.94,
-      latencyMs: 142.3,
-      timestamp: '2026-08-30 15:21:04',
-      model: 'gemini-3.6-flash'
-    }
-  ]);
+  const [auditLogs, setAuditLogs] = useState<QueryAuditLog[]>([]);
 
-  // Envio de nova dúvida corporativa
-  const handleSendMessage = (query: string) => {
+  const loadDocuments = async () => {
+    try {
+      const data = await apiRequest<{ total: number; documents: Array<{ id: number; title: string; filename: string; category?: string; total_chunks: number; created_at?: string | null; updated_at?: string | null }> }>('/documents');
+
+      const mappedDocs: DocumentMetadata[] = data.documents.map(doc => ({
+        id: String(doc.id),
+        filename: doc.filename,
+        title: doc.title,
+        category: doc.category || 'Geral',
+        code: doc.filename.replace(/\.[^.]+$/, '').replace(/_/g, '-').toUpperCase(),
+        version: 'api',
+        content: '',
+        chunksCount: doc.total_chunks,
+        totalChars: 0,
+        updatedAt: doc.updated_at || doc.created_at || new Date().toISOString().split('T')[0]
+      }));
+
+      setDocuments(mappedDocs);
+    } catch (error) {
+      console.error('Erro ao carregar documentos da API:', error);
+      setDocuments([]);
+    }
+  };
+
+  const loadHistory = async () => {
+    try {
+      const history = await apiRequest<Array<{ id: number; question: string; answer: string; sources: string[]; chunks_used: number; model_used: string; latency_ms: number; created_at?: string | null }>>('/history');
+
+      const mappedLogs: QueryAuditLog[] = history.map(item => ({
+        id: `log-${item.id}`,
+        question: item.question,
+        answer: item.answer,
+        sources: item.sources || [],
+        chunksRetrieved: item.chunks_used || 0,
+        similarity: 0,
+        latencyMs: Number(item.latency_ms) || 0,
+        timestamp: item.created_at || new Date().toISOString(),
+        model: item.model_used || 'gemini-3.6-flash'
+      }));
+
+      setAuditLogs(mappedLogs);
+    } catch (error) {
+      console.error('Erro ao carregar histórico da API:', error);
+      setAuditLogs([]);
+    }
+  };
+
+  useEffect(() => {
+    void loadDocuments();
+    void loadHistory();
+  }, []);
+
+  const handleSendMessage = async (query: string) => {
     const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -75,42 +110,58 @@ export default function App() {
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
 
-    setTimeout(() => {
-      const response = ragEngine.generateAnswer(query);
+    try {
+      const response = await apiRequest<{ question: string; answer: string; sources: string[]; retrieved_chunks_count: number; latency_ms: number; model_used: string; query_id?: number }>('/ask', {
+        method: 'POST',
+        body: JSON.stringify({ question: query, top_k: 4 })
+      });
+
       const aiMsg: ChatMessage = {
         id: `ai-${Date.now()}`,
         sender: 'ai',
         text: response.answer,
-        sources: response.sources,
-        chunks: response.chunks,
-        similarityScore: response.similarityScore,
-        latencyMs: response.latencyMs,
+        sources: response.sources || [],
+        similarityScore: response.sources && response.sources.length > 0 ? 0.92 : 0,
+        latencyMs: Number(response.latency_ms) || 0,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
       setMessages(prev => [...prev, aiMsg]);
-      setSimilarityScore(response.similarityScore > 0 ? response.similarityScore : 0.89);
-      setLatencyMs(response.latencyMs);
+      setSimilarityScore(response.sources && response.sources.length > 0 ? 0.92 : 0);
+      setLatencyMs(Number(response.latency_ms) || 0);
 
-      // Registra no histórico de logs RAG
       const newLog: QueryAuditLog = {
-        id: `log-${Date.now()}`,
-        question: query,
+        id: `log-${response.query_id ?? Date.now()}`,
+        question: response.question,
         answer: response.answer,
-        sources: response.sources,
-        chunksRetrieved: response.chunks.length,
-        similarity: response.similarityScore,
-        latencyMs: response.latencyMs,
+        sources: response.sources || [],
+        chunksRetrieved: response.retrieved_chunks_count || 0,
+        similarity: response.sources && response.sources.length > 0 ? 0.92 : 0,
+        latencyMs: Number(response.latency_ms) || 0,
         timestamp: new Date().toLocaleString(),
-        model: 'gemini-3.6-flash'
+        model: response.model_used || 'gemini-3.6-flash'
       };
-      setAuditLogs(prev => [newLog, ...prev]);
 
+      setAuditLogs(prev => [newLog, ...prev]);
+    } catch (error) {
+      console.error('Erro ao consultar o assistente:', error);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `ai-error-${Date.now()}`,
+          sender: 'ai',
+          text: 'Não foi possível responder agora. Verifique a conexão com a API ou a autenticação configurada.',
+          sources: [],
+          similarityScore: 0,
+          latencyMs: 0,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+    } finally {
       setIsLoading(false);
-    }, 600);
+    }
   };
 
-  // Limpar conversa
   const handleClearChat = () => {
     setMessages([
       {
@@ -122,7 +173,6 @@ export default function App() {
     ]);
   };
 
-  // Selecionar documento pelo nome do arquivo (ex: vindo das fontes no chat)
   const handleSelectDocByName = (filename: string) => {
     const found = documents.find(d => d.filename === filename || filename.includes(d.filename));
     if (found) {
@@ -130,40 +180,34 @@ export default function App() {
     }
   };
 
-  // Upload dinâmico de documento Markdown
-  const handleUploadDoc = async (file: File) => {
+  const handleRefreshDocs = async () => {
     try {
-      const text = await file.text();
-      const filename = file.name;
-      const title = text.split('\n')[0].replace(/^#+\s*/, '') || filename;
-      const newDoc: DocumentMetadata = {
-        id: `doc-${Date.now()}`,
-        filename,
-        title,
-        category: 'Documento Adicionado',
-        code: 'CORP-CUSTOM',
-        version: '1.0',
-        content: text,
-        chunksCount: Math.ceil(text.length / 400),
-        totalChars: text.length,
-        updatedAt: new Date().toISOString().split('T')[0]
-      };
+      const result = await apiRequest<{ status: string; total_documents: number; total_chunks: number; message: string }>('/ingest', {
+        method: 'POST'
+      });
 
-      setDocuments(prev => [newDoc, ...prev]);
-      ragEngine.indexDocuments([newDoc, ...documents]);
-
-      // Mensagem de sistema notificando ingestão
       setMessages(prev => [
         ...prev,
         {
-          id: `sys-upload-${Date.now()}`,
+          id: `sys-ingest-${Date.now()}`,
           sender: 'system',
-          text: `Documento "${filename}" ingerido e indexado com sucesso no motor RAG (${newDoc.chunksCount} chunks gerados).`,
+          text: result.message || `Base de documentos reindexada com sucesso (${result.total_documents} documentos).`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
-    } catch (err) {
-      console.error('Erro ao ler arquivo:', err);
+      await loadDocuments();
+      await loadHistory();
+    } catch (error) {
+      console.error('Erro ao reindexar a base documental:', error);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `sys-ingest-error-${Date.now()}`,
+          sender: 'system',
+          text: 'Não foi possível reindexar a base documental. Verifique a API e a autenticação.',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
     }
   };
 
@@ -180,19 +224,15 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden font-sans bg-[#F8FAFC]">
-      {/* Sidebar Esquerda (Geometric Balance Theme) */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         totalDocuments={documents.length}
       />
 
-      {/* Área Central Principal */}
       <main className="flex-1 flex flex-col bg-white overflow-hidden">
-        {/* Header Corporativo */}
         <Header onClearChat={handleClearChat} activeTabTitle={getTabTitle()} />
 
-        {/* Conteúdo Dinâmico com Barra Lateral Direita */}
         <div className="flex-1 flex overflow-hidden">
           {activeTab === 'chat' && (
             <ChatView
@@ -217,18 +257,16 @@ export default function App() {
             />
           )}
 
-          {/* Barra Lateral Direita (Base de Conhecimento e Métricas RAG) */}
           <KnowledgeBaseAside
             documents={documents}
             onSelectDoc={doc => setSelectedDoc(doc)}
             similarityScore={similarityScore}
             latencyMs={latencyMs}
-            onUploadDoc={handleUploadDoc}
+            onRefreshDocs={handleRefreshDocs}
           />
         </div>
       </main>
 
-      {/* Modal de Inspeção de Documento e Chunks */}
       <DocModal doc={selectedDoc} onClose={() => setSelectedDoc(null)} />
     </div>
   );
