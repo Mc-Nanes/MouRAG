@@ -1,0 +1,6 @@
+{
+  "name": "Assistente Inteligente Corporativo - Grupo Moura",
+  "description": "Assistente RAG Corporativo para o Grupo Moura com busca em documentos internos e IA Generativa",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
